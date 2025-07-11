@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Home</title>
+</head>
+<body>
+  <h1> Welcome to Home Page</h1>
+
+  <!-- Logged-in user ID (temporary, for demo) -->
+  <input type="hidden" id="currentUserId" value="PUT_USER_ID_HERE">
+
+  <!-- Search Bar -->
+  <h3>Search Users</h3>
+  <input type="text" id="searchInput" placeholder="Search by username...">
+  <button onclick="searchUsers()">Search</button>
+  <ul id="searchResults"></ul>
+
+  <!--  Incoming Friend Requests -->
+  <h3>Friend Requests</h3>
+  <ul id="requestsList"></ul>
+
+  <!-- Friend List -->
+  <h3>Your Friends</h3>
+  <ul id="friendList"></ul>
+
+  <script>
+    const userId = document.getElementById('currentUserId').value;
+
+    // 🔍 Search users
+    function searchUsers() {
+      const query = document.getElementById('searchInput').value;
+      fetch(`/search?query=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(users => {
+          const list = document.getElementById('searchResults');
+          list.innerHTML = '';
+          users.forEach(user => {
+            if (user._id === userId) return; // Skip self
+            const li = document.createElement('li');
+            li.innerHTML = `${user.username} (${user.email})
+              <button onclick="sendRequest('${user._id}')">Send Request</button>`;
+            list.appendChild(li);
+          });
+        });
+    }
+
+    // Send friend request
+    function sendRequest(receiverId) {
+      fetch('/send-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderId: userId, receiverId })
+      })
+      .then(res => res.text())
+      .then(msg => alert(msg));
+    }
+
+    // Accept request
+    function acceptRequest(senderId) {
+      fetch('/accept-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId: userId, senderId })
+      })
+      .then(res => res.text())
+      .then(msg => {
+        alert(msg);
+        loadFriendRequests();
+        loadFriends();
+      });
+    }
+
+    // Reject request
+    function rejectRequest(senderId) {
+      fetch('/reject-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId: userId, senderId })
+      })
+      .then(res => res.text())
+      .then(msg => {
+        alert(msg);
+        loadFriendRequests();
+      });
+    }
+
+    // Load friend requests
+    function loadFriendRequests() {
+      fetch(`/friend-requests/${userId}`)
+        .then(res => res.json())
+        .then(requests => {
+          const list = document.getElementById('requestsList');
+          list.innerHTML = '';
+          requests.forEach(req => {
+            const li = document.createElement('li');
+            li.innerHTML = `${req.username} (${req.email})
+              <button onclick="acceptRequest('${req._id}')">Accept</button>
+              <button onclick="rejectRequest('${req._id}')">Reject</button>`;
+            list.appendChild(li);
+          });
+        });
+    }
+
+    // Load friend list
+    function loadFriends() {
+      fetch(`/friends/${userId}`)
+        .then(res => res.json())
+        .then(friends => {
+          const list = document.getElementById('friendList');
+          list.innerHTML = '';
+          friends.forEach(friend => {
+            const li = document.createElement('li');
+            li.textContent = `${friend.username} (${friend.email})`;
+            list.appendChild(li);
+          });
+        });
+    }
+
+    //  On load
+    loadFriendRequests();
+    loadFriends();
+  </script>
+</body>
+</html>
